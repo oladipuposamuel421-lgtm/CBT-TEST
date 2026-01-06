@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBT Past Question System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .exam-info {
+            background-color: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .question-container {
+            margin-bottom: 25px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .question-number {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .question-text {
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .options {
+            margin-left: 20px;
+        }
+        
+        .option {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .option input[type="radio"] {
+            margin-right: 10px;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .progress {
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .results {
+            background-color: #d4edda;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .results.show {
+            display: block;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .submit-btn {
+            background-color: #28a745;
+            margin: 10px auto;
+            display: block;
+        }
+        
+        .submit-btn:hover {
+            background-color: #218838;
+        }
+        
+        .review-section {
+            margin-top: 20px;
+        }
+        
+        .review-question {
+            background-color: #f8f9fa;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+        }
+        
+        .correct-answer {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .incorrect-answer {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .selected-answer.correct {
+            background-color: #d4edda;
+        }
+        
+        .selected-answer.incorrect {
+            background-color: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CBT Past Question System</h1>
+        
+        <div id="start-screen">
+            <div class="exam-info">
+                <h2 id="exam-title">Loading...</h2>
+                <p>Total Questions: <span id="total-questions">0</span></p>
+                <button id="start-btn">Start Exam</button>
+            </div>
+        </div>
+        
+        <div id="exam-section" class="hidden">
+            <div class="progress">
+                Question <span id="current-question">1</span> of <span id="total-questions-exam">0</span>
+            </div>
+            
+            <div id="question-area">
+                <!-- Question will be loaded here -->
+            </div>
+            
+            <div class="navigation">
+                <button id="prev-btn" disabled>Previous</button>
+                <button id="next-btn">Next</button>
+            </div>
+            
+            <button id="submit-btn" class="submit-btn hidden">Submit Exam</button>
+        </div>
+        
+        <div id="results-section" class="results">
+            <h2>Exam Results</h2>
+            <p>Your Score: <span id="score">0</span> out of <span id="total-score">0</span></p>
+            <p>Percentage: <span id="percentage">0</span>%</p>
+            <button id="review-btn">Review Answers</button>
+            <button id="restart-btn">Restart Exam</button>
+        </div>
+        
+        <div id="review-section" class="review-section hidden">
+            <h3>Question Review</h3>
+            <div id="review-content">
+                <!-- Review content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load questions from the JSON file
+        let questions = [];
+        let userAnswers = [];
+        let currentQuestionIndex = 0;
+
+        // Fetch the JSON data
+        fetch('cbt_past_question.json')
+            .then(response => response.json())
+            .then(data => {
+                questions = data.questions;
+                document.getElementById('exam-title').textContent = data.metadata.exam_title;
+                document.getElementById('total-questions').textContent = data.metadata.total_questions;
+                document.getElementById('total-questions-exam').textContent = data.metadata.total_questions;
+                
+                // Initialize user answers array
+                userAnswers = new Array(questions.length).fill(null);
+                
+                // Add event listeners
+                document.getElementById('start-btn').addEventListener('click', startExam);
+                document.getElementById('next-btn').addEventListener('click', nextQuestion);
+                document.getElementById('prev-btn').addEventListener('click', prevQuestion);
+                document.getElementById('submit-btn').addEventListener('click', submitExam);
+                document.getElementById('review-btn').addEventListener('click', showReview);
+                document.getElementById('restart-btn').addEventListener('click', restartExam);
+            })
+            .catch(error => {
+                console.error('Error loading questions:', error);
+                document.getElementById('exam-title').textContent = "Error loading exam data";
+            });
+
+        function startExam() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('exam-section').classList.remove('hidden');
+            loadQuestion(currentQuestionIndex);
+            
+            // Show submit button on the last question
+            if (currentQuestionIndex === questions.length - 1) {
+                document.getElementById('submit-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('submit-btn').classList.add('hidden');
+            }
+        }
+
+        function loadQuestion(index) {
+            const question = questions[index];
+            const questionArea = document.getElementById('question-area');
+            
+            let optionsHtml = '';
+            question.options.forEach((option, i) => {
+                const optionLetter = String.fromCharCode(65 + i); // A, B, C, D...
+                const isChecked = userAnswers[index] === optionLetter;
+                optionsHtml += `
+                    <div class="option">
+                        <input type="radio" id="opt${index}_${i}" name="question_${index}" value="${optionLetter}" ${isChecked ? 'checked' : ''}>
+                        <label for="opt${index}_${i}">${option}</label>
+                    </div>
+                `;
+            });
+            
+            questionArea.innerHTML = `
+                <div class="question-container">
+                    <div class="question-number">Question ${question.number}</div>
+                    <div class="question-text">${question.question}</div>
+                    <div class="options">
+                        ${optionsHtml}
+                    </div>
+                </div>
+            `;
+            
+            // Update navigation buttons
+            document.getElementById('current-question').textContent = index + 1;
+            document.getElementById('prev-btn').disabled = index === 0;
+            
+            // Add event listeners to radio buttons
+            const radios = questionArea.querySelectorAll(`input[name="question_${index}"]`);
+            radios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    userAnswers[index] = this.value;
+                    
+                    // Show submit button on the last question if we're currently on it
+                    if (index === questions.length - 1) {
+                        document.getElementById('submit-btn').classList.remove('hidden');
+                    }
+                });
+            });
+            
+            // Update next button and submit button visibility
+            if (index === questions.length - 1) {
+                document.getElementById('next-btn').classList.add('hidden');
+                document.getElementById('submit-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('next-btn').classList.remove('hidden');
+                document.getElementById('submit-btn').classList.add('hidden');
+            }
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion(currentQuestionIndex);
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuestion(currentQuestionIndex);
+            }
+        }
+
+        function submitExam() {
+            // Calculate score
+            let score = 0;
+            for (let i = 0; i < questions.length; i++) {
+                if (userAnswers[i] === questions[i].correct_answer) {
+                    score++;
+                }
+            }
+            
+            const percentage = Math.round((score / questions.length) * 100);
+            
+            // Display results
+            document.getElementById('exam-section').classList.add('hidden');
+            document.getElementById('score').textContent = score;
+            document.getElementById('total-score').textContent = questions.length;
+            document.getElementById('percentage').textContent = percentage;
+            document.getElementById('results-section').classList.add('show');
+        }
+
+        function showReview() {
+            document.getElementById('results-section').classList.remove('show');
+            document.getElementById('review-section').classList.remove('hidden');
+            
+            const reviewContent = document.getElementById('review-content');
+            let reviewHtml = '';
+            
+            questions.forEach((question, index) => {
+                const userAnswer = userAnswers[index];
+                const correctAnswer = question.correct_answer;
+                const isCorrect = userAnswer === correctAnswer;
+                
+                // Find the text for the selected option
+                let userAnswerText = "Not answered";
+                if (userAnswer) {
+                    const optionIndex = userAnswer.charCodeAt(0) - 65; // Convert A->0, B->1, etc.
+                    if (optionIndex >= 0 && optionIndex < question.options.length) {
+                        userAnswerText = question.options[optionIndex];
+                    }
+                }
+                
+                // Find the text for the correct option
+                const correctOptionIndex = correctAnswer.charCodeAt(0) - 65;
+                const correctAnswerText = question.options[correctOptionIndex];
+                
+                reviewHtml += `
+                    <div class="review-question ${isCorrect ? 'selected-answer correct' : 'selected-answer incorrect'}">
+                        <strong>Question ${question.number}:</strong> ${question.question}<br>
+                        <strong>Your Answer:</strong> <span class="${isCorrect ? 'correct-answer' : 'incorrect-answer'}">${userAnswerText}</span><br>
+                        <strong>Correct Answer:</strong> ${correctAnswerText}<br>
+                        <strong>Status:</strong> <span class="${isCorrect ? 'correct-answer' : 'incorrect-answer'}">${isCorrect ? 'Correct' : 'Incorrect'}</span>
+                    </div>
+                `;
+            });
+            
+            reviewContent.innerHTML = reviewHtml;
+        }
+
+        function restartExam() {
+            currentQuestionIndex = 0;
+            userAnswers = new Array(questions.length).fill(null);
+            
+            document.getElementById('review-section').classList.add('hidden');
+            document.getElementById('results-section').classList.remove('show');
+            document.getElementById('exam-section').classList.remove('hidden');
+            document.getElementById('submit-btn').classList.add('hidden');
+            
+            loadQuestion(currentQuestionIndex);
+        }
+    </script>
+</body>
+</html>
